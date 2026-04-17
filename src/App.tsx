@@ -1,18 +1,20 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Music, Play, RotateCcw, ChevronRight, ChevronLeft, Activity } from 'lucide-react';
+import { Music, Play, RotateCcw, ChevronRight, ChevronLeft, Activity, Sparkles } from 'lucide-react';
 import { questions, characters, CharacterResult } from './data';
 
 interface AppResult {
   character: CharacterResult;
-  scores: [number, number, number, number];
+  scores: [number, number, number];
+  matchRate: number;
+  secondChar: CharacterResult;
+  secondMatchRate: number;
 }
 
 const dimensionsDetail = [
-  { id: 'dim0', name: '社交磁场', left: '沉静内敛', right: '热力外放', descL: '独处储能', descR: '人群充电' },
-  { id: 'dim1', name: '脑洞宇宙', left: '务实落地', right: '天马行空', descL: '注重现实细节', descR: '仰望浪漫星空' },
-  { id: 'dim2', name: '情绪回路', left: '理智主导', right: '共情至上', descL: '逻辑层层解析', descR: '感受永远至上' },
-  { id: 'dim3', name: '行动节拍', left: '计划导航', right: '随性盲盒', descL: '追求秩序掌控', descR: '享受灵活自由' },
+  { id: 'dim0', name: '社交磁场', left: '沉静内敛', right: '热力外放', descL: '低耗能·守卫圈层', descR: '高耗能·拥抱人群' },
+  { id: 'dim1', name: '脑洞频段', left: '务实落地', right: '浪漫天马', descL: '信奉客观细节', descR: '追随星辰大海' },
+  { id: 'dim2', name: '情绪回路', left: '理智主导', right: '感性共情', descL: '分析真相至上', descR: '体验感受至上' },
 ];
 
 export default function App() {
@@ -48,41 +50,52 @@ export default function App() {
   const calculateResult = (finalAnswers: Record<number, number>) => {
     setStep('calculating');
     
-    // Base score 1 for each dim
-    const finalScores: [number, number, number, number] = [1, 1, 1, 1];
+    const scores = [0, 0, 0];
+    const maxScores = [0, 0, 0];
     
     questions.forEach((q, idx) => {
       if (finalAnswers[idx] !== undefined) {
-        finalScores[q.dimension] += finalAnswers[idx];
+        scores[q.dimension] += finalAnswers[idx];
       }
+      maxScores[q.dimension] += 3; // Maximum value for each question is 3
     });
 
-    // Find closest character (Euclidean distance)
-    let closestChar = characters[0];
-    let minDistance = Infinity;
+    const normalizedScores: [number, number, number] = [
+      (scores[0] / maxScores[0]) * 100,
+      (scores[1] / maxScores[1]) * 100,
+      (scores[2] / maxScores[2]) * 100,
+    ];
 
-    for (const char of characters) {
-      let distance = 0;
-      for (let i = 0; i < 4; i++) {
-        distance += Math.pow(finalScores[i] - char.vector[i], 2);
+    const resultsWithMatch = characters.map(char => {
+      let distanceSq = 0;
+      for (let i = 0; i < 3; i++) {
+        distanceSq += Math.pow(normalizedScores[i] - char.vector[i], 2);
       }
-      distance = Math.sqrt(distance);
-      
-      if (distance < minDistance) {
-        minDistance = distance;
-        closestChar = char;
-      }
-    }
+      const distance = Math.sqrt(distanceSq);
+      const maxPossibleDist = 173.205; // sqrt(100^2 * 3) max euclidean distance in 3D 100x100 space
+      const rawMatchRate = 100 - (distance / maxPossibleDist) * 100;
+      // Make high matches feel more realistic (e.g., above 60 becomes 80+) using a slight curve, to be more pleasing.
+      const matchRate = Math.min(99.9, Math.max(0, 100 - Math.pow(distance / maxPossibleDist, 0.7) * 100));
+
+      return { char, matchRate: Number(matchRate.toFixed(1)) };
+    });
+
+    resultsWithMatch.sort((a, b) => b.matchRate - a.matchRate);
 
     setTimeout(() => {
-      setResult({ character: closestChar, scores: finalScores });
+      setResult({ 
+        character: resultsWithMatch[0].char, 
+        scores: normalizedScores,
+        matchRate: resultsWithMatch[0].matchRate,
+        secondChar: resultsWithMatch[1].char,
+        secondMatchRate: resultsWithMatch[1].matchRate
+      });
       setStep('result');
-    }, 2000); // 2 second fake calculating delay
+    }, 2800); 
   };
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-900 font-sans flex items-center justify-center p-4 selection:bg-blue-200 selection:text-blue-900 overflow-hidden relative">
-      {/* Soft Bright Background decorations */}
       <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-100/50 blur-[100px] pointer-events-none" />
       <div className="absolute bottom-[-20%] right-[-10%] w-[60%] h-[60%] rounded-full bg-indigo-100/50 blur-[100px] pointer-events-none" />
 
@@ -101,7 +114,7 @@ export default function App() {
                 <Music className="w-10 h-10" />
               </div>
               <h1 className="text-3xl md:text-5xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-gray-900 to-gray-600 pb-2">
-                五月天系人格测试
+                MayDayTi
               </h1>
               <p className="text-base md:text-lg text-gray-500 font-medium max-w-sm mx-auto leading-relaxed">
                 测测你的第二人生，属于五月天里的哪个人物？是主场担当，还是最强节奏？
@@ -123,9 +136,9 @@ export default function App() {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -20 }}
               transition={{ duration: 0.4 }}
-              className="w-full bg-white shadow-[0_8px_40px_rgb(0,0,0,0.06)] border border-gray-100 rounded-[2.5rem] p-6 md:p-10"
+              className="w-full bg-white shadow-[0_8px_40px_rgb(0,0,0,0.06)] border border-gray-100 rounded-[2.5rem] p-6 md:p-10 flex flex-col min-h-[500px]"
             >
-              <div className="mb-8">
+              <div className="mb-8 shrink-0">
                 <div className="flex items-center justify-between text-sm text-gray-400 mb-4 font-semibold px-2">
                   <div className="w-20">
                     {currentQuestionIndex > 0 && (
@@ -139,7 +152,7 @@ export default function App() {
                     )}
                   </div>
                   <span className="tracking-widest uppercase text-xs">Question {currentQuestionIndex + 1} / {questions.length}</span>
-                  <div className="w-20" /> {/* Spacer to center the counter */}
+                  <div className="w-20" />
                 </div>
                 <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden shadow-inner">
                   <motion.div
@@ -151,45 +164,48 @@ export default function App() {
                 </div>
               </div>
 
-              <AnimatePresence mode="popLayout">
-                <motion.div
-                  key={currentQuestionIndex}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -20 }}
-                  transition={{ duration: 0.3 }}
-                >
-                  <h2 className="text-xl md:text-2xl font-bold leading-relaxed mb-8 text-gray-800 px-2">
-                    {questions[currentQuestionIndex].text}
-                  </h2>
+              <div className="flex-1 relative">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={currentQuestionIndex}
+                    initial={{ opacity: 0, x: 15 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -15 }}
+                    transition={{ duration: 0.25 }}
+                    className="absolute inset-0 max-h-full overflow-y-auto pb-4"
+                  >
+                    <h2 className="text-xl md:text-2xl font-bold leading-relaxed mb-6 text-gray-800 px-2">
+                      {questions[currentQuestionIndex].text}
+                    </h2>
 
-                  <div className="space-y-3">
-                    {questions[currentQuestionIndex].options.map((option, idx) => {
-                      const isSelected = answers[currentQuestionIndex] === option.value;
-                      return (
-                        <button
-                          key={idx}
-                          onClick={() => handleOptionSelect(option.value)}
-                          className={`w-full text-left p-4 md:p-5 rounded-2xl border-2 transition-all group flex items-center justify-between ${
-                            isSelected 
-                              ? 'bg-blue-50/50 border-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.1)]' 
-                              : 'bg-white border-gray-100 hover:border-gray-300 hover:shadow-sm'
-                          }`}
-                        >
-                          <span className={`text-base md:text-lg font-medium transition-colors ${isSelected ? 'text-blue-700' : 'text-gray-600 group-hover:text-gray-900'}`}>
-                            {option.text}
-                          </span>
-                          <span className={`flex items-center justify-center w-8 h-8 rounded-full border transition-colors ${
-                            isSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-200 text-gray-300 group-hover:border-gray-400 group-hover:text-gray-400'
-                          }`}>
-                            <ChevronRight className="w-5 h-5" />
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </motion.div>
-              </AnimatePresence>
+                    <div className="space-y-3 pb-8">
+                      {questions[currentQuestionIndex].options.map((option, idx) => {
+                        const isSelected = answers[currentQuestionIndex] === option.value;
+                        return (
+                          <button
+                            key={idx}
+                            onClick={() => handleOptionSelect(option.value)}
+                            className={`w-full text-left p-4 md:p-5 rounded-2xl border-2 transition-all group flex items-center justify-between ${
+                              isSelected 
+                                ? 'bg-blue-50/50 border-blue-500 shadow-[0_4px_20px_rgba(59,130,246,0.1)]' 
+                                : 'bg-white border-gray-100 hover:border-gray-300 hover:shadow-sm'
+                            }`}
+                          >
+                            <span className={`text-base md:text-lg font-medium transition-colors ${isSelected ? 'text-blue-700' : 'text-gray-600 group-hover:text-gray-900'}`}>
+                              {option.text}
+                            </span>
+                            <span className={`flex items-center justify-center w-8 h-8 rounded-full border transition-colors shrink-0 ml-4 ${
+                              isSelected ? 'border-blue-500 bg-blue-500 text-white' : 'border-gray-200 text-gray-300 group-hover:border-gray-400 group-hover:text-gray-400'
+                            }`}>
+                              <ChevronRight className="w-5 h-5" />
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </motion.div>
+                </AnimatePresence>
+              </div>
             </motion.div>
           )}
 
@@ -212,9 +228,10 @@ export default function App() {
               <motion.div
                 animate={{ opacity: [0.5, 1, 0.5] }}
                 transition={{ repeat: Infinity, duration: 1.5 }}
-                className="text-gray-500 font-medium text-lg"
+                className="text-gray-500 font-medium text-lg flex flex-col items-center gap-2"
               >
-                正在为你匹配宇宙磁场...
+                <span>正在进入你的第二人生...</span>
+                <span className="text-sm font-light text-gray-400">正在生成第二人生报告</span>
               </motion.div>
             </motion.div>
           )}
@@ -226,22 +243,29 @@ export default function App() {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               className="w-full bg-white shadow-[0_20px_60px_-15px_rgba(0,0,0,0.1)] border border-gray-100 rounded-[2.5rem] relative overflow-hidden max-w-2xl mx-auto"
             >
-              {/* Top Accent Bar */}
               <div className={`absolute top-0 left-0 w-full h-3 bg-gradient-to-r ${result.character.color}`} />
               
-              <div className="p-6 md:p-10 text-center h-full pt-12 md:pt-16">
+              <div className="p-6 md:p-10 text-center h-full pt-12 md:pt-14">
                 <motion.div
                   initial={{ y: 20, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
                   transition={{ delay: 0.2 }}
                 >
-                  <p className="text-gray-400 font-bold mb-3 uppercase tracking-widest text-xs">MAYDAY UNIVERSE ID</p>
+                  <div className="flex justify-center items-center gap-3 mb-3">
+                    <Sparkles className="w-5 h-5 text-yellow-500" />
+                    <p className="text-gray-400 font-bold uppercase tracking-widest text-xs">MAYDAY UNIVERSE ID</p>
+                    <Sparkles className="w-5 h-5 text-yellow-500" />
+                  </div>
                   
-                  <h2 className={`text-4xl md:text-5xl font-black mb-4 bg-clip-text text-transparent bg-gradient-to-r ${result.character.color}`}>
+                  <h2 className={`text-4xl md:text-5xl font-black mb-2 bg-clip-text text-transparent bg-gradient-to-r ${result.character.color}`}>
                     {result.character.name}
                   </h2>
+                  <div className="flex justify-center items-center gap-2 mb-6">
+                    <span className="text-2xl font-black text-gray-900">{result.matchRate}%</span>
+                    <span className="text-sm text-gray-500 font-medium uppercase tracking-wider mt-1">天生契合度</span>
+                  </div>
                   
-                  <div className={`inline-block px-5 py-2 rounded-full border mb-8 font-bold text-sm bg-gray-50 text-gray-700 border-gray-200`}>
+                  <div className={`inline-block px-5 py-2 rounded-full border mb-8 font-bold text-sm bg-gray-50 text-gray-700 border-gray-200 shadow-sm`}>
                     {result.character.label}
                   </div>
                   
@@ -249,27 +273,32 @@ export default function App() {
                     {result.character.description}
                   </div>
 
-                  <div className="mb-10 text-left px-2">
+                  {/* Advanced Radar Section */}
+                  <div className="mb-10 text-left px-1 md:px-2">
                     <h3 className="text-lg font-bold text-gray-800 text-center mb-8 pb-3 border-b border-gray-100 flex items-center justify-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
                       第二人生成分分析
                       <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
                     </h3>
-                    <div className="space-y-7">
+                    <div className="space-y-8">
                       {dimensionsDetail.map((dim, i) => {
-                        const score = result.scores[i]; // Value from 1 to 10
-                        // Map score to percentage (score 1 = 0% right, score 10 = 100% right)
-                        const percentRight = ((score - 1) / 9) * 100;
+                        const percentRight = result.scores[i];
                         const percentLeft = 100 - percentRight;
 
                         return (
                           <div key={dim.id} className="relative">
-                            <div className="flex justify-between items-end mb-2 text-sm">
-                              <span className={`font-bold ${percentLeft >= 50 ? 'text-gray-800' : 'text-gray-400'}`}>{dim.left}</span>
-                              <span className="text-gray-500 font-bold px-3 py-1 text-[10px] uppercase tracking-wider bg-white rounded-full border border-gray-200 shadow-sm z-10 absolute left-1/2 -translate-x-1/2 -top-1">
+                            <div className="flex justify-between items-end mb-3 text-sm">
+                              <div className="flex flex-col">
+                                <span className={`font-bold ${percentLeft >= 50 ? 'text-gray-800' : 'text-gray-400'}`}>{dim.left}</span>
+                                <span className={`text-[10px] font-medium mt-0.5 ${percentLeft >= 50 ? 'text-gray-500' : 'text-gray-300'}`}>{dim.descL}</span>
+                              </div>
+                              <span className="text-gray-600 font-bold px-3 py-1 text-[11px] bg-white rounded-full border border-gray-200 shadow-sm z-10 absolute left-1/2 -translate-x-1/2 -top-2">
                                 {dim.name}
                               </span>
-                              <span className={`font-bold ${percentRight >= 50 ? 'text-gray-800' : 'text-gray-400'}`}>{dim.right}</span>
+                              <div className="flex flex-col text-right">
+                                <span className={`font-bold ${percentRight >= 50 ? 'text-gray-800' : 'text-gray-400'}`}>{dim.right}</span>
+                                <span className={`text-[10px] font-medium mt-0.5 ${percentRight >= 50 ? 'text-gray-500' : 'text-gray-300'}`}>{dim.descR}</span>
+                              </div>
                             </div>
                             
                             <div className="h-4 bg-gray-100 rounded-full overflow-hidden flex shadow-inner border border-gray-200 relative mb-1.5">
@@ -286,14 +315,16 @@ export default function App() {
                                 {percentRight > 15 && <span className="text-[10px] font-bold text-white absolute ml-1">{Math.round(percentRight)}%</span>}
                               </div>
                             </div>
-                            
-                            <div className="flex justify-between text-[11px] font-medium text-gray-400">
-                              <span className={percentLeft >= 50 ? 'text-gray-600' : ''}>{dim.descL}</span>
-                              <span className={percentRight >= 50 ? 'text-gray-600' : ''}>{dim.descR}</span>
-                            </div>
                           </div>
                         );
                       })}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-4 bg-blue-50/50 p-4 rounded-2xl border border-blue-100 mb-10 text-left">
+                    <div className="flex-1">
+                      <p className="text-xs text-blue-500 font-bold tracking-wider mb-1">第二契合灵魂</p>
+                      <p className="text-gray-700 font-bold">「{result.secondChar.name}」<span className="font-normal text-gray-500 ml-1 text-sm">契合度 {result.secondMatchRate}%</span></p>
                     </div>
                   </div>
 
