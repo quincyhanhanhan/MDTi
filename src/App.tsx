@@ -104,14 +104,14 @@ export default function App() {
                 五月天系人格测试
               </h1>
               <p className="text-base md:text-lg text-gray-500 font-medium max-w-sm mx-auto leading-relaxed">
-                测测你的灵魂磁场，属于五月天宇宙里的哪个人物？是主场担当，还是最强辅助？
+                测测你的第二人生，属于五月天里的哪个人物？是主场担当，还是最强节奏？
               </p>
               <button
                 onClick={handleStart}
                 className="mt-8 px-10 py-4 bg-gray-900 hover:bg-black text-white rounded-full font-medium text-lg transition-all hover:-translate-y-1 active:translate-y-0 shadow-[0_10px_30px_rgba(0,0,0,0.15)] flex items-center justify-center mx-auto gap-2"
               >
                 <Play className="w-5 h-5 fill-current" />
-                开始探寻宇宙
+                开始探寻你的第二人生
               </button>
             </motion.div>
           )}
@@ -252,7 +252,7 @@ export default function App() {
                   <div className="mb-10 text-left px-2">
                     <h3 className="text-lg font-bold text-gray-800 text-center mb-8 pb-3 border-b border-gray-100 flex items-center justify-center gap-2">
                       <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
-                      本命宇宙成分分析
+                      第二人生成分分析
                       <span className="w-1.5 h-1.5 rounded-full bg-gray-300"></span>
                     </h3>
                     <div className="space-y-7">
